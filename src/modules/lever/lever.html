@@ -1,0 +1,243 @@
+<template id="leverTemplate">
+  <style>
+    #lever_bar {
+      display: flex;
+      justify-content: center;
+      width: 4em;
+      height: 10em;
+      position: absolute;
+      top: 0;
+      left: 0;
+      transition: transform 150ms linear;
+      transform: translateX(-1em);
+    }
+    #bar_render {
+      display: block;
+      background: red;
+      width: 2em;
+      height: 10em;
+      border-radius: 20%;
+      box-shadow: 0.5em 0.3em 0.5em rgba(1, 1, 1, 0.3);
+    }
+    #leverpath {
+      background: #333;
+      width: 10em;
+      height: 1.2em;
+      position: absolute;
+      top: 4.4em;
+    }
+    .disabled #bar_render {
+      background: #7e3030;
+    }
+    #container {
+      width: 10em;
+      height: 10em;
+      position: relative;
+    }
+    #container.shake {
+      animation: shake 300ms ease-in-out infinite;
+    }
+    @keyframes shake {
+      0%, 100% {
+        transform: translate(0, 0);
+      }
+      25% {
+        transform: translate(0.15em, -0.15em);
+      }
+      50% {
+        transform: translate(-0.15em, -0.15em);
+      }
+      75% {
+        transform: translate(0.15em, -0.15em);
+      }
+    }
+  </style>
+  <div id="container">
+    <div id="leverpath"></div>
+    <div id="lever_bar">
+      <div id="bar_render"></div>
+    </div>
+    <audio id="thunk" src="./modules/button/button onbass_final.ogg"></audio>
+  </div>
+</template>
+
+
+<script>
+  (() => {
+    let template = document.currentScript.ownerDocument.querySelector('#leverTemplate');
+    customElements.define("lever-switch", class extends HTMLElement {
+      static get observedAttributes() {
+        return ['position'];
+      }
+      constructor() {
+        super();
+        
+        this.root = this.attachShadow({mode: 'open'});
+        this.root.appendChild(template.content.cloneNode(true));
+        
+        this.successEvent = new CustomEvent("succeed", {
+          bubbles: true,
+          cancelable: false,
+        });
+        
+        this.failureEvent = new CustomEvent("fail", {
+          bubbles: true,
+          cancelable: false,
+        });
+        
+        this.wrongSideEvent = new CustomEvent("wrongSide", {
+          bubbles: true,
+          cancelable: false,
+        });
+        
+        let container = this.root.querySelector("#container");
+        
+        this.leverHandle = this.root.querySelector("#lever_bar");
+        this.leverRender = this.root.querySelector("#bar_render");
+        
+        this.FAILURE_TIME = 20000;
+        this.FUDGE_ROOM = 20;
+        this.goalSide = "right";
+        
+        const dragStart = (event) => {
+          if(this._disabled) {
+            return;
+          }
+          this.dragging = true;
+          let rect = this.leverHandle.getBoundingClientRect();
+          let offsetX = event.clientX - rect.left;
+          this.startOffset = offsetX;
+          this.stopShake();
+          this.lastClickedTime = performance.now();
+        };
+        
+        const dragMove = (event) => {
+          if(this.disabled) {
+            return;
+          }
+          if(!this.dragging) {
+            return;
+          }
+           
+          let rect = container.getBoundingClientRect();
+          let offsetX = event.clientX - rect.left;
+          
+          let diff = offsetX - this.startOffset;
+          let leverRect = this.leverRender.getBoundingClientRect();
+          
+          if(diff < this.FUDGE_ROOM) {
+            diff = -leverRect.width / 2;
+            if(this.goalSide === "left") {
+              this.succeed();
+              this.goalSide = "right";
+            }
+            else {
+              this.dispatchEvent(this.wrongSideEvent);
+            }
+          }
+          
+          if(diff + rect.left + leverRect.width + this.FUDGE_ROOM > rect.right) {
+            diff = rect.right - rect.left - leverRect.width * 1.5;
+            if(this.goalSide === "right") {
+              this.succeed();
+              this.goalSide = "left";
+            }
+            else {
+              this.dispatchEvent(this.wrongSideEvent);
+            }
+          }
+          
+          let percentage = diff / rect.width;
+          
+          this.leverHandle.style.transform = "translateX(" + diff + "px)";
+          this.leverRender.style.boxShadow = `${0.5 - percentage}em 0.3em 0.5em rgba(1, 1, 1, 0.3)`;
+          
+          this.lastClickedTime = performance.now();
+        };
+        
+        const dragStop = (event) => {
+          this.dragging = false;
+        };
+        
+        this.leverHandle.addEventListener("mousedown", dragStart);
+        this.leverHandle.addEventListener("touchstart", function(event) {
+          dragStart(event.touches[0])
+        });
+        
+        container.addEventListener("mousemove", dragMove);
+        container.addEventListener("touchmove", function(event) {
+          dragMove(event.touches[0]);
+        });
+        
+        container.addEventListener("mouseup", dragStop);
+        container.addEventListener("mouseleave", dragStop);
+        container.addEventListener("touchend", dragStop);
+        container.addEventListener("dragstart", event => event.preventDefault());
+        
+        this.container = container;
+        this.thunk = this.root.querySelector("#thunk")
+        requestAnimationFrame(this.update.bind(this));
+      }
+      
+      set position(percentage) {
+        this.setPosition(percentage);
+      }
+      
+      setPosition(percentage) {
+        let rect = this.container.getBoundingClientRect();
+        let diff = rect.width * percentage - this.leverHandle.getBoundingClientRect().width / 2;
+        
+        this.leverHandle.style.transform = "translateX(" + diff + "px)";
+        this.leverRender.style.boxShadow = `${0.5 - percentage}em 0.3em 0.5em rgba(1, 1, 1, 0.3)`;
+      }
+      
+      set disabled(isDisabled) {
+        if(isDisabled) {
+          this._disabled = true;
+          this.container.classList.add("disabled");
+        }
+        else {
+          this._disabled = false;
+          this.container.classList.remove("disabled");
+        }
+      }
+      get disabled() {
+        return this._disabled;
+      }
+      
+      succeed() {
+        this.dispatchEvent(this.successEvent);
+        this.stopShake();
+        this.thunk.currentTime = 0;
+        this.thunk.play();
+      }
+      fail() {
+        this.dispatchEvent(this.failureEvent);
+        this.lastClickedTime = performance.now();
+        this.stopShake();
+      }
+      
+      
+      shake() {
+        this.container.classList.add("shake");
+      }
+      stopShake() {
+        this.container.classList.remove("shake");
+      }
+      
+      
+      update(t) {
+        requestAnimationFrame(this.update.bind(this));
+        if(!this.lastClickedTime) {
+          return;
+        }
+        if(t - this.lastClickedTime >= this.FAILURE_TIME) {
+          this.fail();
+        }
+        else if(t - this.lastClickedTime >= this.FAILURE_TIME * 0.6) {
+          this.shake();
+        }
+      }
+    });
+  })();
+</script>

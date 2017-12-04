@@ -1,0 +1,177 @@
+<template id="pressureButtonTemplate">
+  <style>
+    #pressure_container {
+      width: 10em;
+      height: 10em;
+      display: flex;
+      
+      align-items: center;
+      justify-content: center;
+    }
+    #button {
+      border-radius: 50%;
+      border: 3px solid black;
+      box-shadow: 0.5em 0.3em 0.5em rgba(1, 1, 1, 0.3);
+      outline: none;
+      transition: transform 300ms, box-shadow 300ms, background 300ms;
+      background: cornflowerblue;
+    }
+    #button:active, #button.down {
+      box-shadow: 0 0 0.3em rgba(1, 1, 1, 0.3);
+      transform: translateY(0.3em);
+      background: #1959d2;
+    }
+    #button {
+      width: 7em;
+      height: 7em;
+    }
+    #gauge {
+      width: 2em;
+      height: 8em;
+      margin-left: 1em;
+      border-radius: 1em;
+      overflow: hidden;
+      background: black;
+    }
+    #meter {
+      width: 100%;
+      height: 100%;
+      background: green;
+      transform: translateY(100%);
+    }
+  </style>
+  <div id="pressure_container">
+    <button id="button"></button>
+    <div id="gauge">
+      <div id="meter"></div>
+    </div>
+    <audio id="pressure" src="./modules/pressure-button/pressure.ogg"></audio>
+  </div>
+</template>
+
+<script>
+  (() => {
+    let template = document.currentScript.ownerDocument.querySelector('#pressureButtonTemplate');
+    customElements.define("pressure-button", class extends HTMLElement {
+      constructor() {
+        super();
+        
+        this.root = this.attachShadow({mode: 'open'});
+        this.root.appendChild(template.content.cloneNode(true));
+        
+        this.successEvent = new CustomEvent("succeed", {
+          bubbles: true,
+          cancelable: false,
+        });
+        
+        this.failureEvent = new CustomEvent("fail", {
+          bubbles: true,
+          cancelable: false,
+        });
+        
+        this.meter = this.root.querySelector("#meter");
+        
+        this.value = 0.6;
+        
+        this.button = this.root.querySelector("#button");
+        this.button.addEventListener("click", () => {
+          this.value += 0.05;
+        });
+        this.totalCorrectTime = 0;
+        this.scoreThreshold = 0.5;
+        this.correct = false;
+        
+        this.pressureSound = this.root.querySelector("#pressure");
+        
+        requestAnimationFrame(this.update.bind(this));
+      }
+      
+      succeed() {
+        this.dispatchEvent(this.successEvent);
+      }
+      fail() {
+        this.disabled = true;
+        this.value = 0.4;
+        this.dispatchEvent(this.failureEvent);
+        setTimeout(() => {
+          this.disabled = false;
+          this.correct = false;
+        }, 7000);
+      }
+      
+      set value(newVal) {
+        if(newVal < 0) {
+          newVal = 0;
+        }
+        if(newVal > 1) {
+          newVal = 1;
+        }
+        this._value = newVal;
+        this.meter.style.transform = `translateY(${(1 - this.value) * 100}%)`;
+      }
+      get value() {
+        return this._value;
+      }
+      
+      get disabled() {
+        return this._disabled;
+      }
+      set disabled(isDisabled) {
+        this._disabled = isDisabled;
+        if(isDisabled) {
+          this.button.classList.add("down");
+          this.button.disabled = true;
+        }
+        else {
+          this.button.classList.remove("down");
+          this.button.disabled = false;
+        }
+      } 
+      
+      update(dt) {
+        if(!this.lastTickTime) {
+          this.lastTickTime = dt;
+        }
+        let diff = dt - this.lastTickTime;
+        this.lastTickTime = dt;
+        requestAnimationFrame(this.update.bind(this));
+        if(this.disabled) {
+          return;
+        }
+        this.value -= diff / 30000;
+        
+        if(this.value <= 0) {
+          this.fail();
+        }
+        
+        if(this.value > this.scoreThreshold) {
+          if(!this.correct) {
+            this.pressureSound.currentTime = 0;
+            this.pressureSound.play();
+          }
+          this.correct = true;
+          this.totalCorrectTime += diff;
+          let percentage = this.totalCorrectTime / 6000;
+          this.meter.style.background = `rgb(${Math.round(255 * percentage)}, 0, 255)`;
+          if(this.totalCorrectTime > 6000) {
+            this.totalCorrectTime = 0;
+            this.succeed();
+            this.disabled = true;
+            setTimeout(() => {
+              this.disabled = false;
+              this.correct = false;
+            }, 2000);
+          }
+        }
+        if(this.value < this.scoreThreshold) {
+          this.pressureSound.currentTime = 0;
+          this.pressureSound.pause();
+          this.correct = false;
+          this.totalCorrectTime = 0;
+          this.meter.style.background = `rgb(0, 0, 255)`;
+        }
+        
+      }
+    });
+  })();
+</script>

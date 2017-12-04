@@ -1,0 +1,36 @@
+audio {
+  display: none;
+}
+button.blink {
+  animation: buttonBlinkAnimation 600ms steps(2, end) infinite;
+}
+@keyframes buttonBlinkAnimation {
+  0% {
+    background: red;
+  }
+  100% {
+    background: pink;
+  }
+}
+button.big {
+  border-radius: 50%;
+  border: 3px solid black;
+  box-shadow: 0.5em 0.3em 0.5em rgba(1, 1, 1, 0.3);
+  outline: none;
+  transition: transform 300ms, box-shadow 300ms, background 300ms;
+}
+button.big:active, button.down {
+  box-shadow: 0 0 0.3em rgba(1, 1, 1, 0.3);
+  transform: translateY(0.3em);
+}
+button.big {
+  width: 10em;
+  height: 10em;
+}
+
+button.big.red {
+  background: red;
+}
+button.big.red:active, button.red.down {
+  background: #c40000;
+}

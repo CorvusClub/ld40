@@ -1,0 +1,244 @@
+<template id="simonTemplate">
+  <style>
+    #screen {
+      position: relative;
+      border-radius: 2em;
+      background: black;
+      width: 10em;
+      height: 10em;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .wrapper {
+      display: grid;
+      grid-template-columns: 3.5em 3.5em;
+      grid-gap: 1em;
+      height: 8em;
+      width: 8em;
+      box-sizing: border-box;
+      user-select: none;
+      border-radius: 50%;
+      overflow: hidden;
+      background-color: black;
+    }
+    
+    .box {
+      height: 3.5em;
+      width: 3.5em;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: Pixel, sans-serif;
+      box-sizing: border-box;
+      background: cornflowerblue;
+    }
+    #centercircle {
+      position: absolute;
+      width: 4em;
+      height: 4em;
+      border-radius: 50%;
+      top: 3em;
+      left: 3em;
+      background: black;
+    }
+    
+    
+    .red {
+      background-color: red;
+    }
+    .red.active {
+      filter: blur(2px) drop-shadow(0 0 1em red);
+      background-color: #ff4d4d;
+    }
+    
+    .green {
+      background-color: green;
+    }
+    .green.active {
+      filter: blur(2px) drop-shadow(0 0 1em green);
+      background-color: #01ba01;
+    }
+    
+    .blue {
+      background-color: #3a3aff;
+    }
+    .blue.active {
+      filter: blur(2px) drop-shadow(0 0 1em #3a3aff);
+      background-color: #6869fa;
+    }
+    
+    .yellow {
+      background-color: yellow;
+    }
+    .yellow.active {
+      filter: blur(2px) drop-shadow(0 0 1em yellow);
+      background-color: #ffff62;
+    }
+  </style>
+    <div id="screen">
+      <div class="wrapper">
+        <div class="box red"></div>
+        <div class="box green"></div>
+        <div class="box blue"></div>
+        <div class="box yellow"></div>
+      </div>
+      <div id="centercircle"></div>
+    </div>
+    <audio id="redAudio" src="./modules/simon/banjo.ogg"></audio>
+    <audio id="greenAudio" src="./modules/simon/DOOM.ogg"></audio>
+    <audio id="blueAudio" src="./modules/simon/gun.ogg"></audio>
+    <audio id="yellowAudio" src="./modules/simon/littledude.ogg"></audio>
+    <audio id="correct" src="./modules/trivia/trivia yay.mp3"></audio>
+</template>
+
+<script>
+  (() => {
+    let template = document.currentScript.ownerDocument.querySelector('#simonTemplate');
+    customElements.define("simon-says", class extends HTMLElement {
+      constructor() {
+        super();
+        
+        this.root = this.attachShadow({mode: 'open'});
+        this.root.appendChild(template.content.cloneNode(true));
+        
+        this.successEvent = new CustomEvent("succeed", {
+          bubbles: true,
+          cancelable: false,
+        });
+        
+        this.failureEvent = new CustomEvent("fail", {
+          bubbles: true,
+          cancelable: false,
+        });
+        
+        this.audio = {
+          red: this.root.querySelector("#redAudio"),
+          green: this.root.querySelector("#greenAudio"),
+          blue: this.root.querySelector("#blueAudio"),
+          yellow: this.root.querySelector("#yellowAudio"),
+        };
+        
+        this.correct = this.root.querySelector("#correct");
+        
+        this.audio.red.volume = 0.3;
+        this.audio.green.volume = 0.3;
+        this.audio.blue.volume = 0.3;
+        this.audio.yellow.volume = 0.3;
+        this.correct.volume = 0.4;
+        
+        this.buttons = ["red", "green", "blue", "yellow"];
+        
+        this.reset();
+        
+        this.buttons.forEach(buttonName => {
+          let button = this.root.querySelector("." + buttonName);
+          button.addEventListener("click", () => {
+            let target = this.chain[this.playerProgress];
+            this.blink(target);
+            if(target === buttonName) {
+              this.playerChoseCorrectly();
+            }
+            else {
+              this.fail();
+            }
+          });
+        })
+        
+        setTimeout(this.showPattern.bind(this), 5000);
+        
+      }
+      
+      playerChoseCorrectly() {
+        if(this.failTimeout) {
+          clearTimeout(this.failTimeout);
+        }
+        if(this.patternTimeout) {
+          clearTimeout(this.patternTimeout);
+        }
+        this.playerProgress++;
+        if(this.playerProgress >= this.chain.length) {
+          this.succeed();
+        }
+        else {
+          this.failTimeout = setTimeout(() => {
+            this.fail();
+          }, 4000);
+        }
+      }
+      
+      chooseButton() {
+        return this.buttons[Math.floor(Math.random()*this.buttons.length)];
+      }
+      
+      reset() {
+        this.chain = [this.chooseButton()];
+        this.progress = 0;
+        this.repeats = 0;
+        
+        this.playerProgress = 0;
+      }
+      
+      succeed() {
+        if(this.failTimeout) {
+          clearTimeout(this.failTimeout);
+        }
+        if(this.patternTimeout) {
+          clearTimeout(this.patternTimeout);
+        }
+        setTimeout(() => {
+          this.correct.currentTime = 0;
+          this.correct.play();
+        }, 500);
+        this.dispatchEvent(this.successEvent);
+        this.chain.push(this.chooseButton());
+        this.progress = 0;
+        this.repeats = 0;
+        this.playerProgress = 0;
+        this.patternTimeout = setTimeout(this.showPattern.bind(this), 5000); 
+      }
+      fail() {
+        if(this.failTimeout) {
+          clearTimeout(this.failTimeout);
+        }
+        if(this.patternTimeout) {
+          clearTimeout(this.patternTimeout);
+        }
+        this.dispatchEvent(this.failureEvent);
+        this.reset();
+        this.patternTimeout = setTimeout(this.showPattern.bind(this), 5000); 
+      }
+      
+      blink(current) {
+        this.root.querySelector("." + current).classList.add("active");
+        this.audio[current].currentTime = 0;
+        this.audio[current].play();
+        setTimeout(() => this.unblink(current), 500);
+      }
+      
+      showPattern() {
+        let current = this.chain[this.progress];
+        this.blink(current);
+        if(this.progress === this.chain.length-1) {
+          this.progress = 0;
+          this.repeats++;
+          if(this.repeats >= 3) {
+            this.fail();
+          }
+          else {
+            this.patternTimeout = setTimeout(this.showPattern.bind(this), 5000);
+          }
+        }
+        else {
+          this.progress++;
+          this.patternTimeout = setTimeout(this.showPattern.bind(this), 1000);
+        }
+      }
+      
+      unblink(current) {
+        this.root.querySelector("." + current).classList.remove("active");
+      }
+      
+    });
+  })();
+</script>

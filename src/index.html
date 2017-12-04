@@ -1,0 +1,38 @@
+<!doctype html>
+<html>
+  <head>
+    <meta name="HandheldFriendly" content="true">
+    <meta name="MobileOptimized" content="width">
+    <meta name="viewport" content="width=device-width, minimum-scale=1, maximum-scale=1, user-scalable=no">
+    <title>thanks, I hate it!</title>
+  </head>
+  <body class="dim">
+    <link rel="stylesheet" href="index.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/webcomponentsjs/1.0.20/webcomponents-hi-sd-ce.js"></script>
+    <script src="index.js" defer></script>
+    
+    <link rel="import" href="./modules/counter/counter.html" async />
+    <link rel="import" href="./modules/button/button.html" async />
+    <link rel="import" href="./modules/pressure-button/pressure-button.html" async />
+    <link rel="import" href="./modules/tic-tac-toe/tic-tac-toe.html" async />
+    <link rel="import" href="./modules/lever/lever.html" async />
+    <link rel="import" href="./modules/dynamic-lever/dynamic-lever.html" async />
+    <link rel="import" href="./modules/trivia/trivia.html" async />
+    <link rel="import" href="./modules/graph/graph.html" async />
+    <link rel="import" href="./modules/jackbox/jackbox.html" async />
+    <link rel="import" href="./modules/crank/crank.html" async />
+    <link rel="import" href="./modules/simon/simon.html" async />
+    <link rel="import" href="./modules/light-switch/light-switch.html" async />
+    
+    
+    <audio id="fail" src="./static/alerts/alarm.mp3"></audio>
+    <audio id="ding" src="./static/alerts/success.ogg"></audio>
+    <div id="dimOverlay"></div>
+    <div id="randomImage"></div>
+    <div id="everything">
+      <fancy-counter></fancy-counter>
+      <div id="modules">
+      </div>
+    </div>
+  </body>
+</html>

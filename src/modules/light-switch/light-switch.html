@@ -1,0 +1,160 @@
+<template id="lightSwitchTemplate">
+  <style>
+    #lightswitchContainer {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      width: 10em;
+      height: 10em;
+    }
+    
+    #switch {
+      appearance: none;
+      -webkit-appearance: none;
+      -moz-appearance: none;
+      width: 4em;
+      height: 8em;
+      background-color: white;
+      background: linear-gradient(to bottom,  rgba(250,250,250,1) 0%,rgba(235,228,225,1) 4%,rgba(209,195,187,1) 100%);
+      border-top: 0.6em solid #fff7e0;
+      position: relative;
+      outline: none;
+      box-shadow: 3px 12px 11px rgba(0, 0, 0, 0.3);
+      
+      transition: 100ms linear;
+    }
+    #switch:checked {
+      border-top: none;
+      box-shadow: 3px 9px 11px rgba(0, 0, 0, 0.3);
+    }
+    #switch:before {
+      content: "ON";
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      width: 100%;
+      height: 4em;
+      background: #dec67b;
+      color: #bfa371;
+      transition: 100ms linear;
+    }
+    #switch:checked:before {
+      background: #ffecb2;
+      color: #634f2c;
+    }
+    #switch:after {
+      content: "OFF";
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      width: 100%;
+      height: 4em;
+      background: #fff4d3;
+      color: #634f2c;
+      transition: 100ms linear;
+    }
+    #switch:checked:after {
+      background: #fffaea;
+      box-shadow: 0 0.6em 0 #d0b57b;
+      color: #bfa371;
+    }
+    
+  </style>
+  <div id="lightswitchContainer">
+    <input type="checkbox" id="switch"></input>
+    <audio id="hum" src="./modules/light-switch/light hum.ogg" loop></audio>
+    <audio id="toggle" src="./modules/light-switch/light switch.ogg"></audio>
+    <audio id="flicker" src="./modules/light-switch/light flicker with hum2.ogg"></audio>
+  </div>
+</template>
+
+<script>
+  (() => {
+    let template = document.currentScript.ownerDocument.querySelector('#lightSwitchTemplate');
+    customElements.define("light-switch", class extends HTMLElement {
+      constructor() {
+        super();
+        
+        this.root = this.attachShadow({mode: 'open'});
+        this.root.appendChild(template.content.cloneNode(true));
+        
+        
+        this.hum = this.root.querySelector("#hum");
+        this.flickerSound = this.root.querySelector("#flicker");
+        this.toggleSound = this.root.querySelector("#toggle");
+        
+        this.flickerLength = 1979;
+        this.autoOffTime = 30000;
+        
+        this.hum.volume = 0.1;
+        this.flickerSound.volume = 0.1;
+        this.toggleSound.volume = 0.4;
+        
+        this.turnOnLightsEvent = new CustomEvent("lightsOn", {
+          bubbles: true,
+          cancelable: false,
+        });
+        
+        this.turnOffLightsEvent = new CustomEvent("lightsOff", {
+          bubbles: true,
+          cancelable: false,
+        });
+        
+        this.startFlickerEvent = new CustomEvent("flicker", {
+          bubbles: true,
+          cancelable: false,
+        });
+        
+        this.switch = this.root.querySelector("#switch");
+        this.switch.addEventListener("change", () => {
+          if(this.switch.checked) {
+            this.lightsOn();
+          }
+          else {
+            this.lightsOff();
+          }
+          if(this.flickerTimeout) {
+            clearTimeout(this.flickerTimeout);
+          }
+          if(this.offTimeout) {
+            clearTimeout(this.offTimeout);
+          }
+          if(this.switch.checked) {
+            this.flickerTimeout = setTimeout(() => {
+              this.dispatchEvent(this.startFlickerEvent);
+              this.flickerSound.currentTime = 0;
+              this.flickerSound.play();
+              this.hum.pause();
+            }, this.autoOffTime - this.flickerLength);
+            this.offTimeout = setTimeout(() => {
+              this.lightsOff();
+            }, this.autoOffTime);
+          }
+        });
+      }
+      
+      lightsOn() {
+        if(this.lightsOffTimeout) {
+          clearTimeout(this.lightsOffTimeout);
+        }
+        this.toggleSound.currentTime = 0;
+        this.toggleSound.play();
+        this.root.querySelector("#switch").checked = true;
+        this.dispatchEvent(this.turnOnLightsEvent);
+        setTimeout(() => {
+          this.hum.play();
+        }, 200);
+      }
+      
+      lightsOff() {
+        this.toggleSound.currentTime = 0;
+        this.toggleSound.play();
+        this.root.querySelector("#switch").checked = false;
+        this.lightsOffTimeout = setTimeout(() => {
+          this.dispatchEvent(this.turnOffLightsEvent);
+        }, 300);
+        this.hum.pause();
+      }
+    });
+  })();
+</script>

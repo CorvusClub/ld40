@@ -1,0 +1,40 @@
+<template id="pressureButtonTemplate">
+  <style>
+    
+  </style>
+  <button></button>
+  <div id="gauge">
+    <div id="meter"></div>
+  </div>
+</template>
+
+<script>
+  (() => {
+    let template = document.currentScript.ownerDocument.querySelector('#pressureButtonTemplate');
+    customElements.define("pressure-button", class extends HTMLElement {
+      constructor() {
+        super();
+        
+        this.root = this.attachShadow({mode: 'open'});
+        this.root.appendChild(template.content.cloneNode(true));
+        
+        this.successEvent = new CustomEvent("succeed", {
+          bubbles: true,
+          cancelable: false,
+        });
+        
+        this.failureEvent = new CustomEvent("fail", {
+          bubbles: true,
+          cancelable: false,
+        });
+      }
+      
+      succeed() {
+        this.dispatchEvent(this.successEvent);
+      }
+      fail() {
+        this.dispatchEvent(this.failureEvent);
+      }
+    });
+  })();
+</script>

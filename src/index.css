@@ -1,0 +1,150 @@
+@font-face {
+  font-family: 'Pixel';
+  src: url('./static/fonts/slkscr.ttf');
+  font-weight: normal;
+  font-style: normal;
+}
+
+body {
+  width: 100vw;
+  height: 100vh;
+  padding: 0;
+  margin: 0;
+  background-color: black;
+}
+body.dim {
+  filter: brightness(50%);
+}
+
+#randomImage {
+  pointer-events: none;
+  width: 100%;
+  min-height: 100%;
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: -1;
+  background: black;
+  background-size: 100%;
+}
+
+#dimOverlay {
+  pointer-events: none;
+  width: 100%;
+  min-height: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 10;
+  background: linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.9));
+  opacity: 0;
+}
+.dim #dimOverlay {
+  opacity: 1;
+}
+
+body.flicker {
+  animation: flickerAnimation 1979ms steps(1, end) 1 forwards;
+  filter: brightness(20%);
+}
+@keyframes flickerAnimation {
+  0.00% { filter: brightness(20%) } 
+  12.94% { filter: brightness(100%) } 
+  36.53% { filter: brightness(20%) } 
+  41.23% { filter: brightness(100%) } 
+  98.99% { filter: brightness(20%) } 
+}
+
+#everything {
+  box-sizing: border-box;
+  padding: 2em;
+  min-height: 100%;
+  width: 52em;
+  margin: auto;
+  background: linear-gradient(#AAA, #555);
+}
+html {
+  transition: transform 150ms linear, filter 300ms linear;
+}
+.shake {
+  animation: shakeAnimation 100ms ease-in-out infinite;
+}
+@keyframes shakeAnimation {
+  0%, 100% {
+    transform: translate(0, 0);
+  }
+  25% {
+    transform: translate(0.15em, -0.15em);
+  }
+  50% {
+    transform: translate(-0.15em, -0.15em);
+  }
+  75% {
+    transform: translate(0.15em, -0.15em);
+  }
+}
+
+.swing {
+  animation: swingAnimation 3s ease-in infinite forwards;
+  transform-origin: 0.7em 0.7em;
+}
+@keyframes swingAnimation {
+  0%, 100% {
+    transform: rotate(-10deg);
+  }
+  30% {
+    transform: rotate(30deg);
+  }
+  60% {
+    transform: rotate(-30deg);
+  }
+  80% {
+    transform: rotate(10deg);
+  }
+}
+
+#modules {
+  display: flex;
+  flex-wrap: wrap;
+}
+#modules > *, fancy-counter {
+  background-image: 
+    url('./static/bolt.png'),
+    url('./static/bolt.png'),
+    url('./static/bolt.png'),
+    url('./static/bolt.png'),
+    url('./static/metal.png');
+  background-size: 1em, 1em, 1em, 1em, auto;
+  background-repeat: no-repeat, no-repeat, no-repeat, no-repeat, repeat;
+  background-position: 
+    top 0.3em left 0.3em,
+    top 0.3em right 0.3em,
+    bottom 0.3em left 0.3em,
+    bottom 0.3em right 0.3em, center;
+  
+  padding: 1em;
+}
+
+fancy-counter {
+  display: flex;
+  width: 13em;
+  height: 5em;
+  align-items: center;
+  justify-content: flex-end;
+  margin: auto;
+  margin-bottom: 1em;
+}
+
+big-red-button {
+  width: 10em;
+  height: 10em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@media (max-width: 800px) {
+  #everything {
+    width: 28em;
+  }
+}

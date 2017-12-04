@@ -1,0 +1,293 @@
+<template id="triviaTemplate">
+  <style>
+    #wrapper {
+      width: 20em;
+      height: 10em;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+      
+      background-color: black;
+      border-radius: 10%;
+      color: green;
+      padding: 1em;
+      box-sizing: border-box;
+      
+      user-select: none;
+    }
+    #message {
+      font-family: Pixel, sans-serif;
+    }
+    #options {
+      font-family: Pixel, sans-serif;
+      display: flex;
+      flex-direction: column;
+      margin: 0;
+      font-size: 0.9em;
+    }
+    #options li {
+      padding: 0.2em;
+    }
+    #options.blink {
+      animation: triviaBlinkAnimation 600ms steps(2, end) infinite;
+    }
+    @keyframes triviaBlinkAnimation {
+      0% {
+        color: green;
+      }
+      100% {
+        color: white;
+      }
+    }
+  </style>
+  <div id="wrapper">
+    <div id="message"></div>
+    <ol id="options">
+    </ol>
+  </div>
+  <audio id="correct" src="./modules/trivia/trivia yay.mp3"></audio>
+</template>
+
+<script>
+  const questions = [
+    {
+      q: "Is this a bad game?",
+      a: [
+        "*Yes",
+        "No",
+        "*It's killing me!",
+      ],
+    },
+    {
+      q: "What is the first letter of the alphabet",
+      a: [
+        "*A",
+        "Blease free me from this hell.",
+        "Cee what I have to deal with?",
+      ],
+    },
+    {
+      q: "Who is the star of the Super Mario series?",
+      a: [
+        "The Big Red Button",
+        "*Mario",
+        "Waluigi",
+      ],
+    },
+    {
+      q: "How many choices are there?",
+      a: [
+        "*Three",
+        "heh...heh...six...hehehe...ty nine!!!!!!",
+        "Do choices even matter?",
+      ],
+    },
+    {
+      q: "Where does rain come from?",
+      a: [
+        "The tears of God",
+        "Microorganisms secreting water",
+        "*Clouds",
+      ],
+    },
+    {
+      q: "What is the cause of global warming?",
+      a: [
+        "Natural warming cycles",
+        "*Carbon dioxide",
+        "sorry, I can't hear you over all this noise",
+      ],
+    },
+    {
+      q: "What is the theme for this Ludum Dare",
+      a: [
+        "*The more you have the worse it is",
+        "*Whatever it is, you really made a bad thing",
+        "☃",
+      ],
+    },
+    {
+      q: "What value does a $20 bill have?",
+      a: [
+        "In this economy?!",
+        "rare earth minerals are the only things with value",
+        "*$20",
+      ],
+    },
+    {
+      q: "Dogs or cats?",
+      a: [
+        "*Dogs",
+        "*Cats",
+        "*both are good",
+      ],
+    },
+    {
+      q: "What is the equation for the area of a circle",
+      a: [
+        "*there are way too many things on screen",
+        "*A=πr^2",
+        "*they'll never stop",
+      ],
+    },
+    {
+      q: "What is the largest extant mammal?",
+      a: [
+        "*the blue whale",
+        "my cousin mark",
+        "the tardigrade",
+      ],
+    },
+    {
+      q: "How many legs do bears have?",
+      a: [
+        "Seven",
+        "Thirty-three",
+        "*Four",
+      ],
+    },
+    {
+      q: "What color is the Big Red Button",
+      a: [
+        "*red",
+        "well actually, there are multiple colors in the big red button",
+        "Green, like the master emerald",
+      ],
+    },
+    {
+      q: "how many quarts are in a gallon",
+      a: [
+        "Please god, let me rest",
+        "why is there no pause button?",
+        "*four",
+      ],
+    },
+    {
+      q: "What is GOTY 2015",
+      a: [
+        "*The witcher 3: wild hunt",
+        "*geralt_tub.jpg",
+        "fallout 4",
+      ],
+    },
+    {
+      q: "how many licks does it take to get to the center of a generic brand lolipop",
+      a: [
+        "one big ol' cronch",
+        "*an average of 150 licks",
+        "i use a knife and fork thank you very much",
+      ],
+    },
+    {
+      q: "What color is the background of the trivia module?",
+      a: [
+        "three",
+        "i'm colorblind",
+        "*black",
+      ],
+    },
+  ];
+  (() => {
+    let template = document.currentScript.ownerDocument.querySelector('#triviaTemplate');
+    customElements.define("trivia-box", class extends HTMLElement {
+      constructor() {
+        super();
+        
+        this.root = this.attachShadow({mode: 'open'});
+        this.root.appendChild(template.content.cloneNode(true));
+        
+        this.message = this.root.querySelector("#message");
+        this.options = this.root.querySelector("#options");
+        
+        this.successEvent = new CustomEvent("succeed", {
+          bubbles: true,
+          cancelable: false,
+        });
+        
+        this.failureEvent = new CustomEvent("fail", {
+          bubbles: true,
+          cancelable: false,
+        });
+        
+        this.correctSound = this.root.querySelector("#correct");
+        this.correctSound.volume = 0.5;
+        
+        this.chooseQuestion(0);
+      }
+      
+      succeed() {
+        this.stopBlink();
+        clearTimeout(this.failWarningTimeout);
+        clearTimeout(this.failTimeout);
+        this.dispatchEvent(this.successEvent);
+        this.options.innerHTML = "";
+        this.message.innerHTML = "CORRECT";
+        this.correctSound.currentTime = 0;
+        this.correctSound.play();
+        
+        setTimeout(() => {
+          this.chooseQuestion();
+        }, 3000);
+      }
+      fail() {
+        this.stopBlink();
+        clearTimeout(this.failWarningTimeout);
+        clearTimeout(this.failTimeout);
+        this.dispatchEvent(this.failureEvent);
+        this.options.innerHTML = "";
+        this.message.innerHTML = "INCORRECT";
+        
+        setTimeout(() => {
+          this.chooseQuestion();
+        }, 3000);
+      }
+      
+      blink() {
+        this.options.classList.add("blink");
+      }
+      stopBlink() {
+        this.options.classList.remove("blink");
+      }
+      
+      chooseQuestion(override) {
+        clearTimeout(this.failWarningTimeout);
+        clearTimeout(this.failTimeout);
+        let index = Math.floor(Math.random() * questions.length);
+        if(override !== undefined) {
+          index = override;
+        }
+        this.currentQuestion = questions[index];
+        this.message.innerHTML = this.currentQuestion.q;
+        this.options.innerHTML = "";
+        for(let i = 0; i < this.currentQuestion.a.length; i++) {
+          let text = this.currentQuestion.a[i];
+          let correct = false;
+          if(text.indexOf("*") !== -1) {
+            text = text.replace(/\*/g, "");
+            correct = true;
+          }
+          let option = document.createElement("li");
+          option.innerHTML = text;
+          this.options.appendChild(option);
+          option.addEventListener("click", () => {
+            if(correct) {
+              this.succeed();
+            }
+            else {
+              this.fail();
+            }
+          })
+        }
+        
+        this.failWarningTimeout = setTimeout(() => {
+          this.blink();
+        }, 10000);
+        
+        this.failTimeout = setTimeout(() => {
+          this.fail();
+        }, 15000);
+      }
+    });
+  })()
+</script>

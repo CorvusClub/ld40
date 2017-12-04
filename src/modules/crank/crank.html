@@ -1,0 +1,270 @@
+<template id="crankTemplate">
+  <style>
+    #crankContainer {
+      width: 22em;
+      height: 10em;
+      position: relative;
+      display: flex;
+      justify-content: center;
+    }
+    #crankCircle {
+      width: 10em;
+      height: 10em;
+      background: #c4c4c4;
+      border-radius: 50%;
+    }
+    #crankHandle {
+      width: 10em;
+      height: 10em;
+      background-image: url('./static/crank_top.png');
+      background-size: 100%;
+      pointer-events: none;
+    }
+    @keyframes turn {
+      0% {
+        transform: rotate(0deg);
+      }
+      100% {
+        transform: rotate(360deg);
+      }
+    }
+    #pressure_display {
+      width: 10em;
+      height: 10em;
+      background-image: url('./static/pressure.png');
+      background-size: 100%;
+    }
+    #pressure_hand {
+      width: 10em;
+      height: 10em;
+      background-image: url('./static/pressure_hand.png');
+      background-size: 100%;
+      transition: transform 100ms ease-in;
+    }
+    #pressure_display.shake {
+      animation: pressureShake 300ms ease-in-out infinite;
+    }
+    @keyframes pressureShake {
+      0%, 100% {
+        transform: translate(0, 0);
+      }
+      25% {
+        transform: translate(0.15em, -0.15em);
+      }
+      50% {
+        transform: translate(-0.15em, -0.15em);
+      }
+      75% {
+        transform: translate(0.15em, -0.15em);
+      }
+    }
+  </style>
+  <div id="crankContainer" ondrag="return false;">
+    <div id="crankCircle" ondrag="return false;">
+      <div id="crankHandle"></div>
+    </div>
+    <div id="pressure_display">
+      <div id="pressure_hand"></div>
+    </div>
+  </div>
+  <audio id="click1" src="./modules/crank/click1.ogg"></audio>
+  <audio id="click2" src="./modules/crank/click2.ogg"></audio>
+  <audio id="click3" src="./modules/crank/click3.ogg"></audio>
+  <audio id="win" src="./modules/tic-tac-toe/tictactoewin.mp3"></audio>
+</template>
+
+<script>
+  (() => {
+    let template = document.currentScript.ownerDocument.querySelector('#crankTemplate');
+    const MIN_PRESSURE_ANGLE = -213;
+    const MAX_PRESSURE_ANGLE = 43;
+    const MIN_RPM = 0;
+    const MAX_RPM = 20;
+    customElements.define("turn-crank", class extends HTMLElement {
+      constructor() {
+        super();
+        
+        this.root = this.attachShadow({mode: 'open'});
+        this.root.appendChild(template.content.cloneNode(true));
+        
+        this.successEvent = new CustomEvent("succeed", {
+          bubbles: true,
+          cancelable: false,
+        });
+        
+        this.failureEvent = new CustomEvent("fail", {
+          bubbles: true,
+          cancelable: false,
+        });
+        
+        this.crankCircle = this.root.querySelector("#crankCircle");
+        this.handle = this.root.querySelector("#crankHandle");
+        
+        this.pressure_hand = this.root.querySelector("#pressure_hand");
+        this.pressure_display = this.root.querySelector("#pressure_display");
+        
+        this.clicks = [
+          this.root.querySelector("#click1"),
+          this.root.querySelector("#click2"),
+          this.root.querySelector("#click3"),
+        ];
+        
+        this.win = this.root.querySelector("#win");
+        this.win.volume = 0.3;
+        
+        this.clicks.forEach(click => click.volume = 0.2);
+        
+        this.clickRadDistance = Math.PI / 4;
+        
+        this.lastClickAngle = 0;
+        
+        const dragStart = (event) => {
+          let rect = this.crankCircle.getBoundingClientRect();
+          let offsetX = event.clientX - rect.left;
+          let offsetY = event.clientY - rect.top;
+          this.dragging = true;
+          if(event.preventDefault) {
+            event.preventDefault();
+          }
+        };
+        this.crankCircle.addEventListener("mousedown", dragStart);
+        this.crankCircle.addEventListener("touchstart", event => {
+          event.preventDefault();
+          dragStart(event.touches[0])
+        });
+        
+        this.angle = 0;
+        
+        this.rotationTimes = [3000];
+        
+        this.TIME_TO_SCORE = 7000;
+        
+        
+        function shortestDiffBetweenAngles(from, to) {
+          return Math.atan2(Math.sin(to-from), Math.cos(to-from))
+        }
+        this.rotationStartTime = performance.now();
+        
+        const dragMove = (event) => {
+          if(!this.dragging) {
+            return;
+          }
+          let rect = this.crankCircle.getBoundingClientRect();
+          let offsetX = event.clientX - rect.left;
+          let offsetY = event.clientY - rect.top;
+          let centerX = rect.width / 2;
+          let centerY = rect.height / 2;
+          
+          let angle = Math.atan2(offsetY - centerY, offsetX - centerX);
+          let diff = shortestDiffBetweenAngles(this.angle, angle);
+          if(diff > 0 && diff < Math.PI / 3) {
+            this.angle += diff;
+            if(this.angle - this.lastClickAngle > this.clickRadDistance) {
+              this.lastClickAngle = this.angle;
+              this.playClick();
+            }
+            this.handle.style.transform = "rotate(" + angle + "rad)";
+            if(this.angle >= Math.PI * 2) {
+              let now = performance.now();
+              this.angle = 0;
+              this.lastClickAngle = 0;
+              this.rotationTimes.push(now - this.rotationStartTime);
+              this.rotationStartTime = now;
+              setTimeout(() => {
+                this.rotationTimes.shift();
+              }, 120000);
+            }
+          }
+        }
+        this.crankCircle.addEventListener("mousemove", dragMove);
+        this.crankCircle.addEventListener("touchmove", event => {
+          if(this.dragging) {
+            event.preventDefault();
+          }
+          dragMove(event.touches[0])
+        });
+        
+        const dragStop = (event) => {
+          this.dragging = false;
+        };
+        
+        this.crankCircle.addEventListener("mouseup", dragStop);
+        this.crankCircle.addEventListener("touchend", event => dragStop(event.touches[0]));
+        
+        requestAnimationFrame(this.animate.bind(this));
+      }
+      
+      playClick() {
+        if(!this.clickIndex) {
+          this.clickIndex = 0;
+        }
+        this.clicks[this.clickIndex].currentTime = 0;
+        this.clicks[this.clickIndex].play();
+        this.clickIndex++;
+        if(this.clickIndex >= this.clicks.length) {
+          this.clickIndex = 0;
+        }
+      }
+      
+      animate() {
+        requestAnimationFrame(this.animate.bind(this));
+        let rpm = this.calculateRpm();
+        if(rpm <= 10) {
+          this.pressure_display.classList.add("shake");
+        }
+        else {
+          this.pressure_display.classList.remove("shake");
+          let now = performance.now();
+          if(!this.correctStart) {
+            this.correctStart = now;
+          }
+          let timeInCorrect = now - this.correctStart;
+          if(timeInCorrect >= this.TIME_TO_SCORE) {
+            this.succeed();
+            this.correctStart = null;
+          }
+        }
+        if(rpm <= 3.5) {
+          this.fail();
+        }
+        if(rpm <= MIN_RPM) {
+          rpm = MIN_RPM;
+        }
+        if(rpm >= MAX_RPM) {
+          rpm = MAX_RPM;
+        }
+        let rpm_percentage = (rpm - MIN_RPM) / (MAX_RPM - MIN_RPM);
+        
+        let angle_size = MAX_PRESSURE_ANGLE - MIN_PRESSURE_ANGLE;
+        
+        let angle = rpm_percentage * angle_size + MIN_PRESSURE_ANGLE;
+        
+        this.pressure_hand.style.transform = `rotate(${angle}deg)`;
+      }
+      
+      calculateRpm() {
+        if(this.rotationTimes.length === 0) {
+          return 0;
+        }
+        let historyTotal = this.rotationTimes.reduce((a, b) => a + b);
+        historyTotal += performance.now() - this.rotationStartTime;
+        
+        let average = historyTotal / (this.rotationTimes.length + 1);
+        
+        let rpm = (1 / average) * 60 * 1000;
+        
+        return rpm;
+      }
+      
+      succeed() {
+        this.dispatchEvent(this.successEvent);
+        this.win.currentTime = 0;
+        this.win.play();
+      }
+      fail() {
+        this.dispatchEvent(this.failureEvent);
+        this.rotationTimes.push(1000); // push away from constantly failing
+      }
+    });
+  })();
+</script>

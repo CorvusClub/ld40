@@ -1,0 +1,98 @@
+<script type="text/javascript" src="../../static/vendor/odometer.min.js"></script>
+<template id="counterTemplate">
+  <style>
+    #fakeDigits {
+      margin-right: -0.25em;
+    }
+    #counter {
+      font-size: 4em;
+      display: flex;
+      justify-content: space-evenly;
+      align-items: center;
+      width: 100%;
+    }
+    .odometer * {
+      transition: transform 500ms !important;
+    }
+    .odometer-digit {
+      margin-left: 0 !important;
+    }
+    #digit1 .odometer-digit:not(:last-child) {
+      display: none;
+    }
+    #digit2 .odometer-digit:not(:nth-last-child(2n)) {
+      display: none;
+    }
+    #digit2.zero .odometer-digit {
+      display: inline-block;
+    }
+    #digit3 .odometer-digit:not(:nth-last-child(3n)) {
+      display: none;
+    }
+    #digit3.zero .odometer-digit {
+      display: inline-block;
+    }
+  </style>
+  <link rel="stylesheet" href="./static/vendor/odometer-theme-train-station.css"></link>
+  <span id="counter">
+    <span id="digit3">0</span>
+    <span id="digit2">0</span>
+    <span id="digit1">0</span>
+  </span>
+</template>
+
+
+<script>
+  (() => {
+    let template = document.currentScript.ownerDocument.querySelector('#counterTemplate');
+    customElements.define("fancy-counter", class extends HTMLElement {
+      static get observedAttributes() {
+        return ['value'];
+      }
+      constructor() {
+        super();
+        
+        this.root = this.attachShadow({mode: 'open'});
+        this.root.appendChild(template.content.cloneNode(true));
+        
+        this.fakeContainer = this.root.querySelector("#fakeDigits");
+        
+        this.odometers = ["digit1", "digit2", "digit3"];
+        this.odometers = this.odometers.map(id => {
+          return new Odometer({
+            el: this.root.getElementById(id),
+            theme: 'train-station',
+            duration: 500,
+            format: '(,ddd)'
+          })
+        });
+        
+        this.value = this.getAttribute("value") || 0;
+      }
+      
+      get value() {
+        return this.getAttribute("value");
+      }
+      set value(newVal) {
+        let digits = newVal.toString().split("").reverse();
+        while(digits.length < 3) {
+          digits.push(0);
+        }
+        digits.forEach((digit, index) => {
+          let val = newVal;
+          if(digit === 0) {
+            val = 0;
+            setTimeout(() => {
+              this.odometers[index].el.classList.add("zero");
+            }, 530)
+          }
+          else {
+            this.odometers[index].el.classList.remove("zero")
+          }
+          this.odometers[index].el.innerHTML = val;
+        });
+        return this.setAttribute("value", newVal);
+      }
+    });
+  })();
+</script>

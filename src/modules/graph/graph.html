@@ -1,0 +1,108 @@
+<script type="text/javascript" src="../../static/vendor/chartist.min.js"></script>
+<template id="graphTemplate">
+  <style>
+    #chart {
+      width: 10em;
+      height: 10em;
+      
+      background: black;
+      border-radius: 10%;
+      color: green;
+      box-sizing: border-box;
+    }
+    #chart .ct-line {
+      stroke: green;
+    }
+    #chart .ct-point {
+      stroke-width: 0px;
+      stroke: green;
+    }
+    #chart .ct-series-a {
+      transform: translateX(-1em);
+    }
+    #container {
+      position: relative;
+    }
+    #highscore {
+      font-family: Pixel, sans-serif;
+      position: absolute;
+      bottom: 0.5em;
+      left: 1em;
+      font-size: 0.9em;
+      
+      color: green;
+      
+      user-select: none;
+    }
+    #apm {
+      font-family: Pixel, sans-serif;
+      position: absolute;
+      top: 0.5em;
+      left: 1em;
+      font-size: 0.9em;
+      
+      color: green;
+      
+      user-select: none;
+    }
+  </style>
+  <link rel="stylesheet" href="./static/vendor/chartist.min.css"></link>
+  <div id="container">
+    <div id="chart" class="ct-chart ct-square"></div>
+    <div id="highscore">HIGH SCORE: 0</div>
+    <div id="apm">APM: 0</div>
+  </div>
+</template>
+
+<script>
+  
+  (() => {
+    let template = document.currentScript.ownerDocument.querySelector('#graphTemplate');
+    customElements.define("score-graph", class extends HTMLElement {
+      constructor() {
+        super();
+        
+        this.root = this.attachShadow({mode: 'open'});
+        this.root.appendChild(template.content.cloneNode(true));
+        
+        this.highscore = this.root.querySelector("#highscore");
+        this.apm = this.root.querySelector("#apm");
+        
+        let data = {
+          // Our series array that contains series objects or in this case series data arrays
+          series: [
+            window.scoreArray
+          ]
+        };
+        this.chartElem = this.root.querySelector("#chart");
+        let rect = this.chartElem.getBoundingClientRect();
+        
+        this.chart = new Chartist.Line(this.chartElem, data, {
+          axisX: {
+            showLabel: false,
+            showGrid: false,
+          },
+          axisY: {
+            showLabel: false,
+            showGrid: false,
+          },
+          chartPadding: {
+            top: 15,
+            left: 0,
+            bottom: 0,
+            right: 0,
+          },
+          fullWidth: true,
+        });
+        this.highscore.innerHTML = "HIGH SCORE: " + window.highscore;
+        this.apm.innerHTML = "APM: " + window.apm();
+        
+        setInterval(() => {
+          this.chart.update({series: [window.scoreArray]});
+          this.highscore.innerHTML = "HIGH SCORE: " + window.highscore;
+          this.apm.innerHTML = "APM: " + window.apm();
+        }, 1000);
+      }
+    });
+  })()
+</script>

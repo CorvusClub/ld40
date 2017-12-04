@@ -1,0 +1,303 @@
+<template id="jackboxTemplate">
+  <style>
+    #jackWrapper {
+    	perspective: 50em;
+    	perspective-origin: 50% 8em;
+    }
+    #cube {
+    	position: relative;
+    	width: 10em;
+    	transform-style: preserve-3d;
+    	transform: translateX(-3em) translateY(-2em) rotateX(-31deg) rotateY(72deg) rotateZ(-39deg);
+    }
+    #cube.shake {
+      animation: cubeShake 600ms ease-in-out infinite;
+    }
+    
+    @keyframes cubeShake {
+      0%, 100% {
+    	  transform: translateX(-3em) translateY(-2em) rotateX(-31deg) rotateY(72deg) rotateZ(-39deg);
+      }
+      25% {
+    	  transform: translateX(-3em) translateY(-2em) rotateX(-26deg) rotateY(72deg) rotateZ(-39deg);
+      }
+      50% {
+    	  transform: translateX(-3em) translateY(-2em) rotateX(-31deg) rotateY(67deg) rotateZ(-39deg);
+      }
+      75% {
+    	  transform: translateX(-3em) translateY(-2em) rotateX(-31deg) rotateY(72deg) rotateZ(-33deg);
+      }
+    }
+    #cube div {
+    	position: absolute;
+    	width: 5em;
+    	height: 5em;
+    }
+    #cube .back {
+    	transform: translateZ(0em) rotateY(180deg);
+    	background: url('./static/jackinthebox.png') #284a9e;
+    	background-size: 100%;
+    }
+    #cube .right {
+    	transform: rotateY(-270deg) translateX(0em);
+    	transform-origin: top right;
+    	background: url('./static/jackinthebox.png') #284a9e;
+    	background-size: 100%;
+    }
+    #cube .left {
+    	transform: rotateY(270deg) translateX(0em);
+    	transform-origin: center left;
+    	background: url('./static/jackinthebox.png') #284a9e;
+    	background-size: 100%;
+    }
+    #cube.open .top {
+      transform: rotateX(-90deg) translateY(-5em) rotateY(-90deg);
+    }
+    #cube .top {
+    	transform: rotateX(-90deg) translateY(-5em);
+    	transform-origin: top right;
+    	background: red;
+    	transition: transform 200ms linear;
+    }
+    #cube .bottom {
+    	transform: rotateX(90deg) translateY(5em);
+    	transform-origin: bottom center;
+    	background: red;
+    }
+    #cube .front {
+    	transform: translateZ(5em);
+    	background: url('./static/jackinthebox.png') #284a9e;
+    	background-size: 100%;
+    }
+    #cube #crank {
+    	background: url('./static/crank.png');
+    	background-size: 100%;
+    	transform: translateZ(7em) translateY(-2em) rotateY(-90deg) rotateX(0deg);
+    	transform-origin: bottom center;
+    }
+    .cranking #crank {
+      animation: jackCrankAnimation 900ms linear infinite;
+    }
+    @keyframes jackCrankAnimation {
+      0% {
+    	  transform: translateZ(7em) translateY(-2em) rotateY(-90deg) rotateX(0deg);
+      }
+      100% {
+    	  transform: translateZ(7em) translateY(-2em) rotateY(-90deg) rotateX(360deg);
+      }
+    }
+    #cube #weasel {
+    	transform: rotateY(-90deg) rotateX(52deg) translateY(0.3em) translateZ(3em) translateX(2.2em);
+    	transform-origin: bottom center;
+    }
+    #cube #weasel #emoji {
+      font-size: 4em;
+    }
+    
+    #catButton, #horseButton, #duckButton {
+      position: absolute;
+      bottom: 2em;
+      width: 3em;
+      height: 3em;
+    }
+    #duckButton {
+      left: 0em;
+    }
+    #catButton {
+      left: 3em;
+    }
+    #horseButton {
+      left: 6em;
+    }
+    #jackContainer {
+      position: relative;
+      width: 10em;
+      height: 10em;
+    }
+  </style>
+  <div id="jackContainer">
+    <div id="jackWrapper">
+    	<div id="cube">
+    		<div class="front"></div>
+    		<div class="back"></div>
+    		<div class="top"></div>
+    		<div class="bottom"></div>
+    		<div class="left"></div>
+    		<div class="right"></div>
+    		<div id="crank"></div>
+    		<div id="weasel"><span id="emoji"></span></div>
+    	</div>
+    </div>
+    <button id="duckButton">🦆</button>
+    <button id="catButton">🐈</button>
+    <button id="horseButton">🐎</button>
+  </div>
+  <audio id="catAudio" src="./modules/jackbox/pop goes the cat.mp3"></audio>
+  <audio id="horseAudio" src="./modules/jackbox/pop goes the horse.mp3"></audio>
+  <audio id="duckAudio" src="./modules/jackbox/pop goes the duck.mp3"></audio>
+  <audio id="correct" src="./modules/trivia/trivia yay.mp3"></audio>
+</template>
+
+<script>
+  (() => {
+    const cat = "🐈";
+    const horse = "🐎";
+    const duck = "🦆";
+    
+    let template = document.currentScript.ownerDocument.querySelector('#jackboxTemplate');
+    customElements.define("jack-in-the-box", class extends HTMLElement {
+      constructor() {
+        super();
+        
+        this.emojiOptions = [cat, horse, duck];
+        
+        this.root = this.attachShadow({mode: 'open'});
+        this.root.appendChild(template.content.cloneNode(true));
+        
+        this.successEvent = new CustomEvent("succeed", {
+          bubbles: true,
+          cancelable: false,
+        });
+        
+        this.failureEvent = new CustomEvent("fail", {
+          bubbles: true,
+          cancelable: false,
+        });
+        
+        this.cube = this.root.querySelector("#cube");
+        
+        this.emoji = this.root.querySelector("#emoji");
+        
+        this.catAudio = this.root.querySelector("#catAudio");
+        this.horseAudio = this.root.querySelector("#horseAudio");
+        this.duckAudio = this.root.querySelector("#duckAudio");
+        this.correct = this.root.querySelector("#correct");
+        
+        this.catAudio.volume = 0.4;
+        this.horseAudio.volume = 0.4;
+        this.duckAudio.volume = 0.4;
+        this.correct.volume = 0.4;
+        
+        this.catButton = this.root.querySelector("#catButton");
+        this.horseButton = this.root.querySelector("#horseButton");
+        this.duckButton = this.root.querySelector("#duckButton");
+        
+        this.catButton.addEventListener("click", () => {
+          if(this.emoji.innerHTML === cat) {
+            this.succeed();
+          }
+          else {
+            this.fail();
+          }
+        });
+        this.horseButton.addEventListener("click", () => {
+          if(this.emoji.innerHTML === horse) {
+            this.succeed();
+          }
+          else {
+            this.fail();
+          }
+        });
+        this.duckButton.addEventListener("click", () => {
+          if(this.emoji.innerHTML === duck) {
+            this.succeed();
+          }
+          else {
+            this.fail();
+          }
+        });
+        
+        
+        setTimeout(() => {
+          this.selectEmoji();
+        }, 2000);
+      }
+      
+      succeed() {
+        if(this.failTimeout) {
+          clearTimeout(this.failTimeout)
+        }
+        if(this.failWarningTimeout) {
+          clearTimeout(this.failWarningTimeout);
+        }
+        if(this.revealTimeout) {
+          clearTimeout(this.revealTimeout);
+        }
+        if(this.nextTimeout) {
+          clearTimeout(this.nextTimeout);
+        }
+        setTimeout(() => {
+          this.emoji.innerHTML = "";
+        }, 500)
+        this.horseAudio.pause();
+        this.duckAudio.pause();
+        this.catAudio.pause();
+        this.correct.currentTime = 0;
+        this.correct.play();
+        this.dispatchEvent(this.successEvent);
+        this.cube.classList.remove("open");
+        this.cube.classList.remove("cranking");
+        this.cube.classList.remove("shake");
+        this.nextTimeout = setTimeout(() => {
+          this.selectEmoji();
+        }, 14000);
+      }
+      fail() {
+        if(this.failTimeout) {
+          clearTimeout(this.failTimeout)
+        }
+        if(this.failWarningTimeout) {
+          clearTimeout(this.failWarningTimeout);
+        }
+        if(this.revealTimeout) {
+          clearTimeout(this.revealTimeout);
+        }
+        if(this.nextTimeout) {
+          clearTimeout(this.nextTimeout);
+        }
+        setTimeout(() => {
+          this.emoji.innerHTML = "";
+        }, 500)
+        this.horseAudio.pause();
+        this.duckAudio.pause();
+        this.catAudio.pause();
+        this.dispatchEvent(this.failureEvent);
+        this.cube.classList.remove("open");
+        this.cube.classList.remove("cranking");
+        this.cube.classList.remove("shake");
+        this.nextTimeout = setTimeout(() => {
+          this.selectEmoji();
+        }, 10000);
+      }
+      
+      selectEmoji() {
+        this.targetEmoji = this.emojiOptions[Math.floor(this.emojiOptions.length * Math.random())];
+        this.cube.classList.add("cranking");
+        this.emoji.innerHTML = this.targetEmoji;
+        if(this.targetEmoji === cat) {
+          this.catAudio.currentTime = 0;
+          this.catAudio.play();
+        }
+        if(this.targetEmoji === horse) {
+          this.horseAudio.currentTime = 0;
+          this.horseAudio.play();
+        }
+        if(this.targetEmoji === duck) {
+          this.duckAudio.currentTime = 0;
+          this.duckAudio.play();
+        }
+        
+        this.revealTimeout = setTimeout(() => {
+          this.cube.classList.add("open");
+          this.cube.classList.remove("cranking");
+          this.failWarningTimeout = setTimeout(() => {
+            this.cube.classList.add("shake");
+          }, 4000);
+          this.failTimeout = setTimeout(() => {
+            this.fail();
+          }, 8000);
+        }, 6300);
+      }
+    });
+  })();
+</script>

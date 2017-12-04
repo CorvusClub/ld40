@@ -1,0 +1,157 @@
+<link rel="import" href="../lever/lever.html" async></link>
+<template id="dynamicLeverTemplate">
+  <style>
+    #container {
+      position: relative;
+      width: 10em;
+      height: 10em;
+    }
+    #left-arrow {
+      width: 0;
+      height: 0;
+      border-top: 2em solid transparent;
+      border-bottom: 2em solid transparent;
+      
+      border-right: 2em solid black;
+      position: absolute;
+      top: 0em;
+      left: 0.3em;
+    }
+    #right-arrow {
+      width: 0;
+      height: 0;
+      border-top: 2em solid transparent;
+      border-bottom: 2em solid transparent;
+      
+      border-left: 2em solid black;
+      position: absolute;
+      top: 0em;
+      right: 0.3em;
+    }
+    .left #left-arrow {
+      border-right: 2em solid red;
+    }
+    .right #right-arrow {
+      border-left: 2em solid red;
+    }
+    .sublever {
+      position: absolute;
+      top: 0;
+      left: 0;
+      z-index: 10;
+    }
+  </style>
+  <div id="container">
+    <lever-switch class="sublever"></lever-switch>
+    <div id="left-arrow"></div>
+    <div id="right-arrow"></div>
+  </div>
+</template>
+
+
+<script>
+  (() => {
+    let template = document.currentScript.ownerDocument.querySelector('#dynamicLeverTemplate');
+    customElements.define("dynamic-lever", class extends HTMLElement {
+      constructor() {
+        super();
+        
+        this.root = this.attachShadow({mode: 'open'});
+        this.root.appendChild(template.content.cloneNode(true));
+        
+        this.container = this.root.querySelector("#container");
+        
+        this.successEvent = new CustomEvent("succeed", {
+          bubbles: true,
+          cancelable: false,
+        });
+        
+        this.failureEvent = new CustomEvent("fail", {
+          bubbles: true,
+          cancelable: false,
+        });
+        
+        customElements.whenDefined('lever-switch').then(() => {
+          this.lever.setPosition(0.5);
+          this.setNewGoal();
+        });
+        
+        this.lever = this.root.querySelector("lever-switch");
+        this.lever.addEventListener("succeed", () => {
+          setTimeout(() => {
+            this.lever.setPosition(0.5);
+          }, 400);
+          this.lever.disabled = true;
+          this.succeed();
+          
+          this.container.className = "";
+          
+          setTimeout(() => {
+            this.setNewGoal();
+            this.lever.disabled = false;
+            this.lever.lastClickedTime = performance.now();
+          }, 2000);
+        });
+        const fail = () => {
+          setTimeout(() => {
+            this.lever.setPosition(0.5);
+          }, 400);
+          this.lever.disabled = true;
+          this.fail();
+          this.container.className = "";
+          
+          setTimeout(() => {
+            this.setNewGoal();
+            this.lever.disabled = false;
+            this.lever.lastClickedTime = performance.now();
+          }, 2000);
+        };
+        this.lever.addEventListener("fail", fail);
+        this.lever.addEventListener("wrongSide", fail);
+        
+        requestAnimationFrame(this.update.bind(this));
+      }
+      
+      succeed() {
+        this.dispatchEvent(this.successEvent);
+        this.stopShake();
+      }
+      fail() {
+        this.dispatchEvent(this.failureEvent);
+        this.stopShake();
+      }
+      
+      setNewGoal() {
+        if(Math.random() < 0.5) {
+          this.lever.goalSide = "left";
+        }
+        else {
+          this.lever.goalSide = "right";
+        }
+        this.container.className = this.lever.goalSide;
+      }
+      
+      
+      shake() {
+        this.lever.shake();
+      }
+      stopShake() {
+        this.lever.stopShake();
+      }
+      
+      
+      update(t) {
+        requestAnimationFrame(this.update.bind(this));
+        if(!this.lastClickedTime) {
+          return;
+        }
+        if(t - this.lastClickedTime >= this.FAILURE_TIME) {
+          this.fail();
+        }
+        else if(t - this.lastClickedTime >= this.FAILURE_TIME * 0.6) {
+          this.shake();
+        }
+      }
+    });
+  })();
+</script>

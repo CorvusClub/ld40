@@ -15,7 +15,6 @@ const build_dir = "./dist/";
 
 const postcss  = require('gulp-postcss');
 const autoprefixer = require('autoprefixer');
-const range = require('postcss-input-range');
 
 const JS_GLOB = "./src/**/*.js";
 function buildJS() {
@@ -42,17 +41,28 @@ function copyHTML() {
     .pipe(gulp.dest(build_dir));
 }
 
-const STATIC_GLOB = "./src/static/**/*";
+const STATIC_GLOB = "./static/**/*";
 function copyStatic() {
   return gulp.src(STATIC_GLOB)
     .pipe(gulp.dest(build_dir + "static"));
+}
+
+const AUDIO_GLOB = "./src/**/*.ogg";
+function copyAudio() {
+  return gulp.src(AUDIO_GLOB)
+    .pipe(gulp.dest(build_dir));
+}
+
+const MP3_GLOB = "./src/**/*.mp3";
+function copyAudioMp3() {
+  return gulp.src(MP3_GLOB)
+    .pipe(gulp.dest(build_dir));
 }
 
 const CSS_GLOB = "./src/**/*.css";
 function buildCSS() {
   const plugins = [
     autoprefixer({ grid: false }),
-    range(),
   ];
   return gulp.src(CSS_GLOB)
     .pipe(postcss(plugins))
@@ -69,6 +79,8 @@ function watch() {
   gulp.watch(JS_GLOB, gulp.series(buildJS, reload));
   gulp.watch(HTML_GLOB, gulp.series(copyHTML, reload));
   gulp.watch(STATIC_GLOB, gulp.series(copyStatic, reload));
+  gulp.watch(AUDIO_GLOB, gulp.series(copyAudio, reload));
+  gulp.watch(MP3_GLOB, gulp.series(copyAudioMp3, reload));
   gulp.watch(CSS_GLOB, buildCSS);
 
     browserSync.init({
@@ -103,8 +115,10 @@ gulp.task(watch);
 gulp.task(buildJS);
 gulp.task(copyHTML);
 gulp.task(copyStatic);
+gulp.task(copyAudio);
+gulp.task(copyAudioMp3);
 gulp.task(buildCSS);
 gulp.task(clean);
-gulp.task('buildAll', gulp.parallel('buildCSS', 'copyHTML', 'copyStatic', 'buildJS'));
+gulp.task('buildAll', gulp.parallel('buildCSS', 'copyHTML', 'copyStatic', 'copyAudio', 'copyAudioMp3', 'buildJS'));
 gulp.task('dist', gulp.series('clean', 'buildAll'));
 gulp.task('dev', gulp.series('dist', 'watch'));

@@ -1,0 +1,98 @@
+<template id="buttonTemplate">
+  <link rel="stylesheet" href="./modules/button/button.css"></link>
+  <button class="big red"></button>
+  <audio id="on" src="./modules/button/button onbass_final.ogg"></audio>
+  <audio id="off" src="./modules/button/button on_final.ogg"></audio>
+</template>
+
+<script>
+  (() => {
+    let template = document.currentScript.ownerDocument.querySelector('#buttonTemplate');
+    
+    customElements.define("big-red-button", class extends HTMLElement {
+      constructor() {
+        super();
+        
+        this.root = this.attachShadow({mode: 'open'});
+        this.root.appendChild(template.content.cloneNode(true));
+        
+        this.successEvent = new CustomEvent("succeed", {
+          bubbles: true,
+          cancelable: false,
+        });
+        
+        this.failureEvent = new CustomEvent("fail", {
+          bubbles: true,
+          cancelable: false,
+        });
+        
+        
+        this.button = this.root.querySelector("button");
+        
+        this.onSound = this.root.querySelector("#on");
+        this.offSound = this.root.querySelector("#off");
+        
+        this.onSound.volume = 0.4;
+        this.offSound.volume = 0.4;
+        
+        this.lastClickedTime = null;
+        this.FAILURE_TIME = 14000;
+        this.COOLDOWN = 700;
+        
+        const press = event => {
+          let time = performance.now();
+          if(!this.button.disabled && time - this.lastClickedTime >= this.COOLDOWN) {
+            this.succeed();
+            this.lastClickedTime = time;
+            this.button.disabled = true;
+            this.button.classList.add("down");
+          }
+        };
+        this.button.addEventListener("mousedown", press);
+        this.button.addEventListener("touchstart", press);
+        
+        requestAnimationFrame(this.update.bind(this));
+      }
+      succeed() {
+        this.offSound.pause();
+        this.onSound.currentTime = 0;
+        this.onSound.play();
+        this.dispatchEvent(this.successEvent);
+        this.stopBlink();
+      }
+      fail() {
+        this.dispatchEvent(this.failureEvent);
+        this.lastClickedTime = performance.now();
+        this.stopBlink();
+      }
+      blink() {
+        this.button.classList.add("blink");
+      }
+      stopBlink() {
+        this.button.classList.remove("blink");
+      }
+      update(t) {
+        requestAnimationFrame(this.update.bind(this));
+        if(!this.lastClickedTime) {
+          return;
+        }
+        if(t - this.lastClickedTime >= this.FAILURE_TIME) {
+          this.fail();
+        }
+        else if(t - this.lastClickedTime >= this.FAILURE_TIME * 0.6) {
+          this.blink();
+        }
+        else if(this.button.disabled && !this.playedUpSound && t - this.lastClickedTime >= this.COOLDOWN - 350) {
+          this.button.classList.remove("down");
+          this.playedUpSound = true;
+          this.offSound.currentTime = 0;
+          this.offSound.play();
+        }
+        else if(this.button.disabled && t - this.lastClickedTime >= this.COOLDOWN) {
+          this.button.disabled = false;
+          this.playedUpSound = false;
+        }
+      }
+    });
+  })();
+</script>

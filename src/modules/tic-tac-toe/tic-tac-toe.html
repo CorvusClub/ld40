@@ -1,0 +1,402 @@
+<template id="ticTacToeTemplate">
+  <style>
+    .wrapper {
+      display: grid;
+      grid-template-columns: 3em 3em 3em;
+      grid-gap: 0;
+      background-color: black;
+      color: green;
+      border-radius: 10%;
+      height: 10em;
+      width: 10em;
+      box-sizing: border-box;
+      padding: 0.7em;
+      user-select: none;
+    }
+    
+    .box {
+      height: 2em;
+      width: 2em;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 125%;
+      font-family: Pixel, sans-serif;
+      box-sizing: border-box;
+    }
+    .tl, .cl, .bl, .tc, .cc, .bc {
+      border-right: 1px solid green;
+    }
+    .tl, .tc, .tr, .cl, .cc, .cr {
+      border-bottom: 1px solid green;
+    }
+    .wrapper.blink {
+      animation: ticTacBlinkAnimation 600ms steps(2, end) infinite;
+    }
+    @keyframes ticTacBlinkAnimation {
+      0% {
+        color: green;
+        border: 5px solid green;
+      }
+      100% {
+        color: white;
+        border: 5px solid white;
+      }
+    }
+  </style>
+  <div class="wrapper">
+    <div class="box tl"></div>
+    <div class="box tc"></div>
+    <div class="box tr"></div>
+    <div class="box cl"></div>
+    <div class="box cc"></div>
+    <div class="box cr"></div>
+    <div class="box bl"></div>
+    <div class="box bc"></div>
+    <div class="box br"></div>
+  </div>
+  <audio id="tic" src="./modules/tic-tac-toe/tic.mp3"></audio>
+  <audio id="toe" src="./modules/tic-tac-toe/toe.mp3"></audio>
+  <audio id="win" src="./modules/tic-tac-toe/tictactoewin.mp3"></audio>
+</template>
+
+<script>
+  (() => {
+    let template = document.currentScript.ownerDocument.querySelector('#ticTacToeTemplate');
+    customElements.define("tic-tac-toe", class extends HTMLElement {
+      constructor() {
+        super();
+        
+        this.root = this.attachShadow({mode: 'open'});
+        this.root.appendChild(template.content.cloneNode(true));
+        
+        this.tic = this.root.querySelector("#tic");
+        this.toe = this.root.querySelector("#toe");
+        this.win = this.root.querySelector("#win");
+        
+        this.tic.volume = 0.3;
+        this.toe.volume = 0.3;
+        this.win.volume = 0.3;
+        
+        this.wrapper = this.root.querySelector(".wrapper");
+        
+        this.failWarningTimeout = setTimeout(() => {
+          this.wrapper.classList.add("blink");
+        }, 4000);
+        this.failTimeout = setTimeout(() => {
+          this.fail();
+        }, 8000);
+        
+        this.successEvent = new CustomEvent("succeed", {
+          bubbles: true,
+          cancelable: false,
+        });
+        
+        this.failureEvent = new CustomEvent("fail", {
+          bubbles: true,
+          cancelable: false,
+        });
+        
+        this.translateGrid = [["tl", "tc", "tr"],
+                  ["cl", "cc", "cr"],
+                  ["bl", "bc", "br"]];
+        
+        this.state = [["", "", ""],
+                      ["", "", ""],
+                      ["", "", ""]];
+        
+        this.root.querySelector(".tl").addEventListener("click", () => {
+          if(this.thinking) return;
+          if(this.state[0][0]==""){
+            this.state[0][0] = "X";
+            this.update();
+          }
+        })
+        
+        this.root.querySelector(".tc").addEventListener("click", () => {
+          if(this.thinking) return;
+          if(this.state[0][1]==""){
+            this.state[0][1] = "X";
+            this.update();
+          }
+        })
+        
+        this.root.querySelector(".tr").addEventListener("click", () => {
+          if(this.thinking) return;
+          if(this.state[0][2]==""){
+            this.state[0][2] = "X";
+            this.update();
+          }
+        })
+        
+        this.root.querySelector(".cl").addEventListener("click", () => {
+          if(this.thinking) return;
+          if(this.state[1][0]==""){
+            this.state[1][0] = "X";
+            this.update();
+          }
+        })
+        
+        this.root.querySelector(".cc").addEventListener("click", () => {
+          if(this.thinking) return;
+          if(this.state[1][1]==""){
+            this.state[1][1] = "X";
+            this.update();
+          }
+        })
+        
+        this.root.querySelector(".cr").addEventListener("click", () => {
+          if(this.thinking) return;
+          if(this.state[1][2]==""){
+            this.state[1][2] = "X";
+            this.update();
+          }
+        })
+        
+        this.root.querySelector(".bl").addEventListener("click", () => {
+          if(this.thinking) return;
+          if(this.state[2][0]==""){
+            this.state[2][0] = "X";
+            this.update();
+          }
+        })
+        
+        this.root.querySelector(".bc").addEventListener("click", () => {
+          if(this.thinking) return;
+          if(this.state[2][1]==""){
+            this.state[2][1] = "X";
+            this.update();
+          }
+        })
+        
+        this.root.querySelector(".br").addEventListener("click", () => {
+          if(this.thinking) return;
+          if(this.state[2][2]==""){
+            this.state[2][2] = "X";
+            this.update();
+          }
+        })
+      }
+      
+      succeed() {
+        if(this.failWarningTimeout) {
+          clearTimeout(this.failWarningTimeout);
+        }
+        if(this.failTimeout) {
+          clearTimeout(this.failTimeout);
+        }
+        this.wrapper.classList.remove("blink");
+        this.dispatchEvent(this.successEvent);
+        this.thinking = true;
+        this.win.currentTime = 0;
+        this.win.play();
+        setTimeout(() => {
+          this.state = [["", "", ""],
+                        ["", "", ""],
+                        ["", "", ""]];
+          this.thinking = false;
+          this.render();
+          
+          this.failWarningTimeout = setTimeout(() => {
+            this.wrapper.classList.add("blink");
+          }, 4000);
+          this.failTimeout = setTimeout(() => {
+            this.fail();
+          }, 8000);
+        }, 3000);
+      }
+      fail() {
+        if(this.failWarningTimeout) {
+          clearTimeout(this.failWarningTimeout);
+        }
+        if(this.failTimeout) {
+          clearTimeout(this.failTimeout);
+        }
+        this.wrapper.classList.remove("blink");
+        this.dispatchEvent(this.failureEvent);
+        this.thinking = true;
+        setTimeout(() => {
+          this.state = [["", "", ""],
+                        ["", "", ""],
+                        ["", "", ""]];
+          this.thinking = false;
+          this.render();
+          
+          this.failWarningTimeout = setTimeout(() => {
+            this.wrapper.classList.add("blink");
+          }, 4000);
+          this.failTimeout = setTimeout(() => {
+            this.fail();
+          }, 8000);
+        }, 5000);
+      }
+      
+      copyState(state) {
+        let copy = [];
+        for(let i in state) {
+          copy[i] = [];
+          for(let j in state[i]) {
+            copy[i][j] = state[i][j];
+          }
+        }
+        return copy;
+      }
+      scoreState(state, depth) {
+        if(this.checkWin(state, "X")) {
+          return depth - 10;
+        }
+        if(this.checkWin(state, "O")) {
+          return 10 - depth;
+        }
+        if(this.checkDraw(state)) {
+          return 0;
+        }
+        return undefined;
+      }
+      minimax(state, aiTurn, depth=0) {
+        let endGameScore = this.scoreState(state, depth);
+        if(endGameScore !== undefined) {
+          return endGameScore;
+        }
+        depth++;
+        
+        let maxScore;
+        if(aiTurn) {
+          maxScore = -1000;
+        }
+        else {
+          maxScore = 1000;
+        }
+        let maxMove;
+        
+        
+        for(let i = 0; i < state.length; i++) {
+          for(let j = 0; j < state[i].length; j++) {
+            if(state[i][j] !== "") {
+              continue;
+            }
+            let move = {i, j};
+            let possibleState = this.copyState(state);
+            if(aiTurn) {
+              possibleState[i][j] = "O";
+            }
+            else {
+              possibleState[i][j] = "X";
+            }
+            
+            let score = this.minimax(possibleState, !aiTurn, depth);
+            if(aiTurn) {
+              if(score > maxScore) {
+                maxScore = score;
+                maxMove = move;
+              }
+            }
+            else {
+              if(score < maxScore) {
+                maxScore = score;
+                maxMove = move;
+              }
+            }
+          }
+        }
+        
+        this.bestMove = maxMove;
+        
+        return maxScore;
+      }
+      computeMove() {
+        /// FUCK IT
+        if(this.state[0][2] === "X" && this.state[2][2] === "X" && this.state[1][2] === "") {
+          this.state[1][2] = "O";
+          return;
+        }
+        if(this.state[2][0] === "X" && this.state[2][2] === "X" && this.state[2][1] === "") {
+          this.state[2][1] = "O";
+          return;
+        }
+        let score = this.minimax(this.state, true);
+        this.state[this.bestMove.i][this.bestMove.j] = "O";
+        
+        this.toe.currentTime = 0;
+        this.toe.play();
+      }
+      
+      checkWin(state, player, debug) {
+        let cc = state[1][1];
+        if((cc == state[1][0] && cc == state[1][2]) || (cc == state[0][1] && cc == state[2][1]) || (cc == state[0][0] && cc == state[2][2]) || (cc == state[0][2] && cc == state[2][0])) {
+          return player === cc;
+        }
+        let left = state[1][0], right = state[1][2], top = state[0][1], bottom = state[2][1];
+        if(left && left == state[0][0] && left == state[2][0]) {
+          return left === player;
+        }
+        if(right && right == state[0][2] && right == state[2][2]) {
+          return right === player;
+        }
+        if(top && top == state[0][0] && top == state[0][2]) {
+          return top === player;
+        }
+        if(bottom && bottom == state[2][0] && bottom == state[2][2]) {
+          return bottom === player;
+        }
+        
+        
+        return undefined;
+      }
+      
+      checkDraw(state) {
+        for(let i in state) {
+          for(let j in state[i]) {
+            if(state[i][j] == "") {
+              return false;
+            }
+          }
+        }
+        return true;
+      }
+      
+      update() {
+        if(this.failWarningTimeout) {
+          clearTimeout(this.failWarningTimeout);
+        }
+        if(this.failTimeout) {
+          clearTimeout(this.failTimeout);
+        }
+        this.wrapper.classList.remove("blink");
+        this.tic.currentTime = 0;
+        this.tic.play();
+        let isADraw = this.checkDraw(this.state);
+        let hasPlayerWon = this.checkWin(this.state, "X"); // shouldn't happen... but just in case
+        if(isADraw || hasPlayerWon) {
+          this.succeed();
+        }
+        else {
+          this.thinking = true;
+          setTimeout(() => {
+            this.failWarningTimeout = setTimeout(() => {
+              this.wrapper.classList.add("blink");
+            }, 4000);
+            this.failTimeout = setTimeout(() => {
+              this.fail();
+            }, 8000);
+            this.computeMove();
+            this.thinking = false;
+            let hasAIWon = this.checkWin(this.state, "O");
+            if(hasAIWon) {
+              this.fail();
+            }
+            this.render();
+          }, 1000 + Math.random() * 2000);
+        }
+        this.render();
+      }
+      render() {
+        for(let i in this.state) {
+          for(let j in this.state[i]) {
+            this.root.querySelector("." + this.translateGrid[i][j]).innerHTML = this.state[i][j];
+          }
+        }
+      }
+    });
+  })();
+</script>
