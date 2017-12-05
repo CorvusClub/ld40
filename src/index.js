@@ -55,11 +55,17 @@ let dingSound = document.querySelector("#ding");
 alarmSound.volume = 0.1;
 dingSound.volume = 0.4;
 
+let dimOverlay = document.querySelector("#dimOverlay");
+
 let hasSpawnedInitial = false;
 
 let randomImage = document.querySelector("#randomImage");
 let lastBackground = null;
 function addModule(tagName) {
+  setTimeout(() => {
+    dimOverlay.style.height = document.querySelector("#everything").getBoundingClientRect().height + "px";
+  }, 30);
+  window._paq.push(['trackEvent', 'Game', 'addModule', tagName]);
   if(moduleContainer.children.length > 4) {
     if(hasSpawnedInitial) {
       let nextBg = `url('https://source.unsplash.com/random/${window.innerWidth + Math.round(Math.random() * 5)}x${window.innerHeight}')`;
@@ -93,6 +99,7 @@ function addModule(tagName) {
     });
   }
   tag.addEventListener("succeed", () => {
+    window._paq.push(['trackEvent', tagName, 'succeed']);
     if(tagName === "big-red-button") {
       increaseScore(1);
     }
@@ -126,6 +133,7 @@ function addModule(tagName) {
     }
   })
   tag.addEventListener("fail", () => {
+    window._paq.push(['trackEvent', tagName, 'fail']);
     if(tagName === "big-red-button") {
       increaseScore(-1);
     }
@@ -221,6 +229,7 @@ function recordScore() {
   }
   if(score > window.highscore) {
     window.highscore = score;
+    window._paq.push(['trackEvent', 'Game', 'highscore', score]);
   }
 }
 
@@ -255,7 +264,6 @@ let goal_width = 28;
 function onResize() {
   if(window.innerWidth < 800) {
     document.querySelector("#everything").style.fontSize = `${window.innerWidth / goal_width}px`;
-    console.log(window.innerWidth);
   }
 }
 

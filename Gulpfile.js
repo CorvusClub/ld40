@@ -6,6 +6,7 @@ const source = require('vinyl-source-stream');
 const buffer = require('vinyl-buffer');
 const browserify = require('browserify');
 const babel = require('babelify');
+const uglify = require('gulp-uglify');
 
 const del = require('del');
 
@@ -30,6 +31,7 @@ function buildJS() {
     .on('error', function(err) { console.error(err.message); this.emit('end'); })
     .pipe(source('index.js'))
     .pipe(buffer())
+    .pipe(uglify())
     .pipe(sourcemaps.init({ loadMaps: true }))
     .pipe(sourcemaps.write('./'))
     .pipe(gulp.dest(build_dir));
