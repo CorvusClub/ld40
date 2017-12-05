@@ -1,6 +1,6 @@
 <template id="ticTacToeTemplate">
   <style>
-    .wrapper {
+    .ticTacwrapper {
       display: grid;
       grid-template-columns: 3em 3em 3em;
       grid-gap: 0;
@@ -30,7 +30,7 @@
     .tl, .tc, .tr, .cl, .cc, .cr {
       border-bottom: 1px solid green;
     }
-    .wrapper.blink {
+    .ticTacwrapper.blink {
       animation: ticTacBlinkAnimation 600ms steps(2, end) infinite;
     }
     @keyframes ticTacBlinkAnimation {
@@ -44,7 +44,7 @@
       }
     }
   </style>
-  <div class="wrapper">
+  <div class="ticTacwrapper">
     <div class="box tl"></div>
     <div class="box tc"></div>
     <div class="box tr"></div>
@@ -78,7 +78,7 @@
         this.toe.volume = 0.3;
         this.win.volume = 0.3;
         
-        this.wrapper = this.root.querySelector(".wrapper");
+        this.wrapper = this.root.querySelector(".ticTacwrapper");
         
         this.failWarningTimeout = setTimeout(() => {
           this.wrapper.classList.add("blink");
